@@ -1,0 +1,6 @@
+httpx
+fastapi
+uvicorn
+python-dotenv
+azure-storage-blob
+fastapi-azure-auth

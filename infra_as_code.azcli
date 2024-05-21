@@ -1,0 +1,64 @@
+az login
+
+$env:AZURE_RESOURCE_GROUP = "RG-ESTUDO-SHARED-DEV-EASTUS2-001"
+$env:AZURE_LOCATION = 'EASTUS2'
+$env:AZURE_STORAGE_ACCOUNT = 'stestudoeventoapims'
+$env:AZURE_SERVICE_BUS = 'sbestudoeventoms'
+$env:AZURE_SERVICE_BUS_QUEUE_NAME = 'estudo.ingestion.document_input_event'
+$env:AZURE_SERVICE_DOCUMENT_RECOGNIZER = 'aicognitiveservicedocument'
+
+# Criando o RG
+az group create --location ${env:AZURE_LOCATION} --name ${env:AZURE_RESOURCE_GROUP}
+
+# Criando o Storage Account
+az storage account create --location ${env:AZURE_LOCATION} --resource-group ${env:AZURE_RESOURCE_GROUP} --name ${env:AZURE_STORAGE_ACCOUNT}
+
+# Obtem a string de conexão com o storage account
+az storage account show-connection-string  --resource-group ${env:AZURE_RESOURCE_GROUP} --name ${env:AZURE_STORAGE_ACCOUNT} --query connectionString -o tsv
+
+# Obtem o ID do storage account
+$env:STORAGE_ACCOUNT_ID=(az storage account show --name ${env:AZURE_STORAGE_ACCOUNT} --resource-group ${env:AZURE_RESOURCE_GROUP} --query id --output tsv)
+$env:STORAGE_ACCOUNT_ID
+
+# Criando o service bus
+az servicebus namespace create --location ${env:AZURE_LOCATION} --resource-group ${env:AZURE_RESOURCE_GROUP} --name ${env:AZURE_SERVICE_BUS}
+
+# Obtem a string de conexão do azure service bus
+az servicebus namespace authorization-rule keys list --resource-group  ${env:AZURE_RESOURCE_GROUP} --namespace-name ${env:AZURE_SERVICE_BUS} --name RootManageSharedAccessKey --query primaryConnectionString -o tsv
+
+# Cria uma fila para recebimento dos eventos
+az servicebus queue create --resource-group ${env:AZURE_RESOURCE_GROUP} --namespace ${env:AZURE_SERVICE_BUS} --name ${env:AZURE_SERVICE_BUS_QUEUE_NAME}
+
+$env:SERVICE_BUS_QUEUE_ID=(az servicebus queue show --resource-group ${env:AZURE_RESOURCE_GROUP} --namespace ${env:AZURE_SERVICE_BUS} --name ${env:AZURE_SERVICE_BUS_QUEUE_NAME} --query id --output tsv)
+$env:SERVICE_BUS_QUEUE_ID
+
+# Criando o provider do event grid
+az provider register --namespace Microsoft.EventGrid
+
+# Validando o registro do provider
+az provider show -n Microsoft.EventGrid
+
+# Cria um event grid para manipular os eventos de criação de registros em um blob do storage account
+az eventgrid event-subscription create `
+    --name eventgrid-ingestion-input-document `
+    --source-resource-id ${env:STORAGE_ACCOUNT_ID} `
+    --endpoint-type servicebusqueue `
+    --endpoint ${env:SERVICE_BUS_QUEUE_ID} `
+    --included-event-types Microsoft.Storage.BlobCreated Microsoft.Storage.DirectoryCreated `
+    --subject-begins-with "/blobServices/default/containers/ingestion/blobs/input/" `
+    --subject-case-sensitive false
+
+# Cria um serviço do azure cognitive service para reconhecimento e extração de documentos
+az cognitiveservices account create `
+    --name ${env:AZURE_SERVICE_DOCUMENT_RECOGNIZER} `
+    --resource-group ${env:AZURE_RESOURCE_GROUP} `
+    --kind FormRecognizer `
+    --sku S0 `
+    --location ${env:AZURE_LOCATION} `
+    --yes
+
+# Obtem o Endpoint
+az cognitiveservices account show --name ${env:AZURE_SERVICE_DOCUMENT_RECOGNIZER} --resource-group ${env:AZURE_RESOURCE_GROUP} --query "properties.endpoint" -o tsv
+
+# Obtem a secret
+az cognitiveservices account keys list --name ${env:AZURE_SERVICE_DOCUMENT_RECOGNIZER} --resource-group ${env:AZURE_RESOURCE_GROUP} --query "key1" -o tsv

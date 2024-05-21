@@ -1,0 +1,4 @@
+azure-ai-formrecognizer
+azure-servicebus
+azure-storage-blob
+python-dotenv
