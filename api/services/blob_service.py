@@ -1,3 +1,4 @@
+from io import BytesIO
 from config import Config
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 
@@ -28,5 +29,32 @@ class BlobService:
         
         blobs = [blob for blob in container.list_blobs(name_starts_with=folder_name)]
         return True if len(blobs) > 1 else False
+    
+    def get_items(self, container_name: str, folder_name: str) -> list:
+        container: ContainerClient = self.client.get_container_client(container=container_name)
+        
+        if not container.exists():
+            container.create_container()
+
+        blobs = [blob.name.split('/')[-1] for blob in container.list_blobs(name_starts_with=folder_name)]
+        return blobs
+    
+    def get_item(self, container_name: str, file_name):
+        container: ContainerClient = self.client.get_container_client(container=container_name)
+        
+        if not container.exists():
+            container.create_container()
+
+        try:
+            blob: BlobClient = self.client.get_blob_client('ingestion', blob=file_name)
+            properties = blob.get_blob_properties()
+
+            with BytesIO() as memory_stream:
+                
+                stream = blob.download_blob()
+                stream.readinto(memory_stream)
+                return memory_stream.getvalue(), properties.content_settings.content_type
+        except:
+            return None
         
 

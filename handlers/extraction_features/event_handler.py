@@ -24,13 +24,13 @@ class EventHandler:
             self.blob_service.save_blob(container, f'{directory}/{file_url.split("/")[-1]}', buffer)
 
             if content != None and len(content) > 0:
-                self.blob_service.save_blob(container, f'{directory}/content.txt', content.encode())
+                self.blob_service.save_blob(container, f'{directory}/content.txt', content.encode(), 'application/text')
             if paragrphs != None and len(paragrphs) > 0:
-                self.blob_service.save_blob(container, f'{directory}/paragrphs.json', j.dumps(paragrphs).encode())
+                self.blob_service.save_blob(container, f'{directory}/paragrphs.json', j.dumps(paragrphs).encode(), 'application/json')
             if tables != None and len(tables) > 0:
-                self.blob_service.save_blob(container, f'{directory}/tables.json', j.dumps(tables).encode())
+                self.blob_service.save_blob(container, f'{directory}/tables.json', j.dumps(tables).encode(), 'application/json')
             if kv != None and len(kv) > 0:
-                self.blob_service.save_blob(container, f'{directory}/kv.json', j.dumps(kv).encode())
+                self.blob_service.save_blob(container, f'{directory}/kv.json', j.dumps(kv).encode(), 'application/json')
 
             return True
         except:

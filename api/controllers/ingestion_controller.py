@@ -38,3 +38,20 @@ async def get_status(key: str):
         return JSONResponse(dict(message='Em processamento'))
     else:
         return JSONResponse(dict(message='Processamento finalizado'))
+    
+@router.get('/{key}:files', status_code=status.HTTP_200_OK)
+def get(key: str):
+    path_name = f'output/{key}'
+    blobs = blob_service.get_items('ingestion', path_name)
+    return JSONResponse(content=blobs)
+
+@router.get('/{key}', status_code=status.HTTP_200_OK)
+def get(key: str, file_name: str):
+    path_name = f'output/{key}/{file_name}'
+    response = blob_service.get_item('ingestion', path_name)
+
+    if response is None:
+        return Response(status_code=status.HTTP_404_NOT_FOUND)
+
+    headers = {'content-type':response[1]}
+    return Response(content=response[0], headers=headers)
